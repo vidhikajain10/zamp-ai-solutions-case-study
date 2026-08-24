@@ -175,17 +175,35 @@ else:
 @app.get("/", response_class=HTMLResponse)
 def home():
 
-    history = "".join([
-        f"""
-        <div class="history-item">
-            <strong>{run["company"]}</strong>
-            <span class="{run["decision"].lower()}">
-                {run["decision"]}
-            </span>
+    conn = get_connection()
+
+cursor = conn.execute("""
+    SELECT company, decision, created_at
+    FROM workflow_runs
+    ORDER BY id DESC
+    LIMIT 5
+""")
+
+recent_runs = cursor.fetchall()
+
+conn.close()
+
+history = "".join([
+    f"""
+    <div class="history-item">
+        <div>
+            <strong>{run[0]}</strong>
+            <br>
+            <small>{run[2]}</small>
         </div>
-        """
-        for run in runs[-5:][::-1]
-    ])
+
+        <span class="{run[1].lower()}">
+            {run[1]}
+        </span>
+    </div>
+    """
+    for run in recent_runs
+])
 
     if not history:
         history = "<p class='muted'>No workflow runs yet.</p>"
@@ -707,26 +725,60 @@ button {{
 </html>
 """
 
-
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard():
 
-    total = len(runs)
+    conn = get_connection()
 
-    approved = sum(
-        1 for run in runs
-        if run["decision"] == "APPROVED"
-    )
+    total = conn.execute(
+        "SELECT COUNT(*) FROM workflow_runs"
+    ).fetchone()[0]
 
-    pending = sum(
-        1 for run in runs
-        if run["decision"] == "PENDING"
-    )
+    approved = conn.execute("""
+        SELECT COUNT(*)
+        FROM workflow_runs
+        WHERE decision = 'APPROVED'
+    """).fetchone()[0]
 
-    rejected = sum(
-        1 for run in runs
-        if run["decision"] == "REJECTED"
-    )
+    pending = conn.execute("""
+        SELECT COUNT(*)
+        FROM workflow_runs
+        WHERE decision = 'PENDING'
+    """).fetchone()[0]
+
+    rejected = conn.execute("""
+        SELECT COUNT(*)
+        FROM workflow_runs
+        WHERE decision = 'REJECTED'
+    """).fetchone()[0]
+
+    recent_runs = conn.execute("""
+        SELECT company, country, decision, created_at
+        FROM workflow_runs
+        ORDER BY id DESC
+        LIMIT 10
+    """).fetchall()
+
+    conn.close()
+
+    history_rows = "".join([
+        f"""
+        <tr>
+            <td>{run[0]}</td>
+            <td>{run[1]}</td>
+            <td class="{run[2].lower()}">{run[2]}</td>
+            <td>{run[3]}</td>
+        </tr>
+        """
+        for run in recent_runs
+    ])
+
+    if not history_rows:
+        history_rows = """
+        <tr>
+            <td colspan="4">No workflow runs yet.</td>
+        </tr>
+        """
 
     return f"""
 <!DOCTYPE html>
@@ -740,9 +792,9 @@ def dashboard():
 <style>
 
 body {{
-    font-family: Arial;
+    font-family: Arial, sans-serif;
     background: #f4f6f9;
-    padding: 40px;
+    padding: 40px 20px;
     color: #1e293b;
 }}
 
@@ -769,9 +821,43 @@ body {{
     font-weight: bold;
 }}
 
+.card {{
+    background: white;
+    padding: 25px;
+    border-radius: 12px;
+    margin-top: 25px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}}
+
+table {{
+    width: 100%;
+    border-collapse: collapse;
+}}
+
+th, td {{
+    text-align: left;
+    padding: 12px;
+    border-bottom: 1px solid #e5e7eb;
+}}
+
+.approved {{
+    color: #15803d;
+    font-weight: bold;
+}}
+
+.pending {{
+    color: #d97706;
+    font-weight: bold;
+}}
+
+.rejected {{
+    color: #dc2626;
+    font-weight: bold;
+}}
+
 a {{
     display: inline-block;
-    margin-top: 30px;
+    margin-top: 25px;
 }}
 
 </style>
@@ -784,7 +870,9 @@ a {{
 
 <h1>Workflow Dashboard</h1>
 
-<p>Operational overview of vendor onboarding runs.</p>
+<p>
+Operational overview and audit trail of vendor onboarding decisions.
+</p>
 
 <div class="stats">
 
@@ -807,6 +895,25 @@ a {{
 <p>Rejected</p>
 <div class="number">{rejected}</div>
 </div>
+
+</div>
+
+<div class="card">
+
+<h2>Recent Workflow History</h2>
+
+<table>
+
+<tr>
+    <th>Company</th>
+    <th>Country</th>
+    <th>Decision</th>
+    <th>Timestamp</th>
+</tr>
+
+{history_rows}
+
+</table>
 
 </div>
 
