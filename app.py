@@ -2,10 +2,37 @@ from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse
 import re
 import time
+import sqlite3
+from datetime import datetime
 
 app = FastAPI(title="Vendor Onboarding Workflow")
 
-runs = []
+DB_NAME = "vendor_workflow.db"
+
+
+def get_connection():
+    return sqlite3.connect(DB_NAME)
+
+
+def init_db():
+    conn = get_connection()
+
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS workflow_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            company TEXT,
+            country TEXT,
+            decision TEXT,
+            reason TEXT,
+            created_at TEXT
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+init_db()
 
 
 def validate_vendor(company, bank_name, country, tax_id, documents):
