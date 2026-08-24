@@ -61,25 +61,25 @@ def validate_vendor(company, bank_name, country, tax_id, documents):
         "passed" if required_valid else "warning"
     ))
 
-    # 3. Tax ID validation
-    time.sleep(0.4)
+   # Stage 3 - Tax ID validation
+time.sleep(0.3)
 
-   tax_id = tax_id.strip()
+tax_id = tax_id.strip()
 
 if country == "India":
-    # Simplified GSTIN-style validation for demo purposes
     tax_valid = bool(
-        re.match(r"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$", tax_id.upper())
+        re.match(
+            r"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$",
+            tax_id.upper()
+        )
     )
 
 elif country == "United States":
-    # Simplified US Tax ID validation
     tax_valid = bool(
         re.match(r"^[0-9]{2}-?[0-9]{7}$", tax_id)
     )
 
 elif country == "United Kingdom":
-    # Simplified UK tax reference validation
     tax_valid = bool(
         re.match(r"^[A-Za-z0-9]{8,15}$", tax_id)
     )
@@ -88,15 +88,16 @@ else:
     tax_valid = bool(
         re.match(r"^[A-Za-z0-9]{6,20}$", tax_id)
     )
-    if not tax_valid:
-        issues.append(
-            "Tax ID format does not match the selected country.""
-        )
 
-    stages.append((
-        "Tax ID Validation",
-        "passed" if tax_valid else "warning"
-    ))
+if not tax_valid:
+    issues.append(
+        "Tax ID format does not match the selected country."
+    )
+
+stages.append({
+    "name": "Tax ID Validation",
+    "status": "completed" if tax_valid else "warning"
+})
 
     # 4. Bank / company cross-check
     time.sleep(0.4)
