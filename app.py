@@ -493,10 +493,22 @@ def process(
         documents
     )
 
-    runs.append({
-        "company": company,
-        "decision": decision
-    })
+    conn = get_connection()
+
+conn.execute("""
+    INSERT INTO workflow_runs
+    (company, country, decision, reason, created_at)
+    VALUES (?, ?, ?, ?, ?)
+""", (
+    company,
+    country,
+    decision,
+    reason,
+    datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+))
+
+conn.commit()
+conn.close()
 
     stage_html = ""
 
