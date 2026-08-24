@@ -43,8 +43,8 @@ def validate_vendor(company, bank_name, country, tax_id, documents):
     # 1. Submission received
     stages.append(("Submission Received", "passed"))
 
-    # 2. Required information
-    time.sleep(0.4)
+    # 2. Required information validation
+    time.sleep(0.3)
 
     required_valid = all([
         company.strip(),
@@ -61,46 +61,46 @@ def validate_vendor(company, bank_name, country, tax_id, documents):
         "passed" if required_valid else "warning"
     ))
 
-   # Stage 3 - Tax ID validation
-time.sleep(0.3)
+    # 3. Tax ID validation
+    time.sleep(0.3)
 
-tax_id = tax_id.strip()
+    tax_id = tax_id.strip()
 
-if country == "India":
-    tax_valid = bool(
-        re.match(
-            r"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$",
-            tax_id.upper()
+    if country == "India":
+        tax_valid = bool(
+            re.match(
+                r"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$",
+                tax_id.upper()
+            )
         )
-    )
 
-elif country == "United States":
-    tax_valid = bool(
-        re.match(r"^[0-9]{2}-?[0-9]{7}$", tax_id)
-    )
+    elif country == "United States":
+        tax_valid = bool(
+            re.match(r"^[0-9]{2}-?[0-9]{7}$", tax_id)
+        )
 
-elif country == "United Kingdom":
-    tax_valid = bool(
-        re.match(r"^[A-Za-z0-9]{8,15}$", tax_id)
-    )
+    elif country == "United Kingdom":
+        tax_valid = bool(
+            re.match(r"^[A-Za-z0-9]{8,15}$", tax_id)
+        )
 
-else:
-    tax_valid = bool(
-        re.match(r"^[A-Za-z0-9]{6,20}$", tax_id)
-    )
+    else:
+        tax_valid = bool(
+            re.match(r"^[A-Za-z0-9]{6,20}$", tax_id)
+        )
 
-if not tax_valid:
-    issues.append(
-        "Tax ID format does not match the selected country."
-    )
+    if not tax_valid:
+        issues.append(
+            "Tax ID format does not match the selected country."
+        )
 
-stages.append({
-    "name": "Tax ID Validation",
-    "status": "completed" if tax_valid else "warning"
-})
+    stages.append((
+        "Tax ID Validation",
+        "passed" if tax_valid else "warning"
+    ))
 
-    # 4. Bank / company cross-check
-    time.sleep(0.4)
+    # 4. Bank and company cross-check
+    time.sleep(0.3)
 
     company_clean = company.lower().replace(" ", "")
     bank_clean = bank_name.lower().replace(" ", "")
@@ -121,7 +121,7 @@ stages.append({
     ))
 
     # 5. Document validation
-    time.sleep(0.4)
+    time.sleep(0.3)
 
     required_docs = [
         "Tax Registration",
@@ -144,7 +144,7 @@ stages.append({
     ))
 
     # 6. Final decision
-    time.sleep(0.4)
+    time.sleep(0.3)
 
     if not company_match:
         decision = "REJECTED"
@@ -178,33 +178,29 @@ def home():
 
     conn = get_connection()
 
-cursor = conn.execute("""
-    SELECT company, decision, created_at
-    FROM workflow_runs
-    ORDER BY id DESC
-    LIMIT 5
-""")
+    recent_runs = conn.execute("""
+        SELECT company, decision, created_at
+        FROM workflow_runs
+        ORDER BY id DESC
+        LIMIT 5
+    """).fetchall()
 
-recent_runs = cursor.fetchall()
+    conn.close()
 
-conn.close()
-
-history = "".join([
-    f"""
-    <div class="history-item">
-        <div>
-            <strong>{run[0]}</strong>
-            <br>
-            <small>{run[2]}</small>
+    history = "".join([
+        f"""
+        <div class="history-item">
+            <div>
+                <strong>{run[0]}</strong><br>
+                <small>{run[2]}</small>
+            </div>
+            <span class="{run[1].lower()}">
+                {run[1]}
+            </span>
         </div>
-
-        <span class="{run[1].lower()}">
-            {run[1]}
-        </span>
-    </div>
-    """
-    for run in recent_runs
-])
+        """
+        for run in recent_runs
+    ])
 
     if not history:
         history = "<p class='muted'>No workflow runs yet.</p>"
@@ -214,7 +210,6 @@ history = "".join([
 <html>
 
 <head>
-
 <title>Vendor Onboarding Workflow</title>
 
 <style>
@@ -240,10 +235,6 @@ body {{
     margin-bottom: 30px;
 }}
 
-h1 {{
-    margin-bottom: 8px;
-}}
-
 .subtitle {{
     color: #64748b;
 }}
@@ -263,21 +254,17 @@ input, select {{
     margin-bottom: 18px;
     border: 1px solid #d1d5db;
     border-radius: 8px;
-    font-size: 15px;
 }}
 
 .documents {{
-    margin: 12px 0 24px 0;
+    margin-bottom: 24px;
 }}
 
 .checkbox {{
     display: flex;
     align-items: center;
     gap: 10px;
-    margin: 12px 0;
-    padding: 12px;
-    background: #f8fafc;
-    border-radius: 8px;
+    margin: 10px 0;
 }}
 
 .checkbox input {{
@@ -295,10 +282,6 @@ button {{
     font-size: 16px;
 }}
 
-button:hover {{
-    background: #1d4ed8;
-}}
-
 .workflow {{
     display: flex;
     flex-wrap: wrap;
@@ -310,7 +293,6 @@ button:hover {{
     background: #eef2ff;
     padding: 10px 14px;
     border-radius: 8px;
-    font-size: 14px;
 }}
 
 .arrow {{
@@ -345,13 +327,7 @@ button:hover {{
     color: #94a3b8;
 }}
 
-.dashboard-link {{
-    display: inline-block;
-    margin-top: 10px;
-}}
-
 </style>
-
 </head>
 
 <body>
@@ -359,13 +335,10 @@ button:hover {{
 <div class="container">
 
 <div class="header">
-
 <h1>Vendor Onboarding Workflow</h1>
-
 <p class="subtitle">
 Automated validation and decision workflow for vendor submissions
 </p>
-
 </div>
 
 <div class="card">
@@ -375,65 +348,41 @@ Automated validation and decision workflow for vendor submissions
 <form action="/process" method="post">
 
 <label>Company Name</label>
-<input
-    name="company"
-    placeholder="e.g. Acme Technologies Pvt Ltd"
-    required
->
+<input name="company" required>
 
 <label>Bank Account Holder Name</label>
-<input
-    name="bank_name"
-    placeholder="Enter registered bank account holder name"
-    required
->
+<input name="bank_name" required>
 
 <label>Country</label>
 
 <select name="country">
-
 <option value="India">India</option>
 <option value="United States">United States</option>
 <option value="United Kingdom">United Kingdom</option>
-
 </select>
 
 <label>Tax ID</label>
-
-<input
-    name="tax_id"
-    placeholder="Enter Tax ID"
-    required
->
+<input name="tax_id" required>
 
 <label>Submitted Documents</label>
 
 <div class="documents">
 
 <label class="checkbox">
-<input
-    type="checkbox"
-    name="documents"
-    value="Tax Registration"
->
+<input type="checkbox" name="documents"
+value="Tax Registration">
 Tax Registration
 </label>
 
 <label class="checkbox">
-<input
-    type="checkbox"
-    name="documents"
-    value="Bank Proof"
->
+<input type="checkbox" name="documents"
+value="Bank Proof">
 Bank Proof
 </label>
 
 <label class="checkbox">
-<input
-    type="checkbox"
-    name="documents"
-    value="Compliance Certificate"
->
+<input type="checkbox" name="documents"
+value="Compliance Certificate">
 Compliance Certificate
 </label>
 
@@ -452,21 +401,13 @@ Run Vendor Workflow
 <h2>Process Design</h2>
 
 <div class="workflow">
-
 <div class="step">Submission</div>
-
 <div class="arrow">→</div>
-
 <div class="step">Validation</div>
-
 <div class="arrow">→</div>
-
 <div class="step">Cross-check</div>
-
 <div class="arrow">→</div>
-
 <div class="step">Decision</div>
-
 </div>
 
 </div>
@@ -478,7 +419,7 @@ Run Vendor Workflow
 {history}
 
 <p>
-<a class="dashboard-link" href="/dashboard">
+<a href="/dashboard">
 View Workflow Dashboard →
 </a>
 </p>
@@ -488,20 +429,17 @@ View Workflow Dashboard →
 </div>
 
 </body>
-
 </html>
 """
 
 
 @app.post("/process", response_class=HTMLResponse)
 def process(
-
     company: str = Form(...),
     bank_name: str = Form(...),
     country: str = Form(...),
     tax_id: str = Form(...),
     documents: list[str] = Form([])
-
 ):
 
     decision, reason, issues, stages = validate_vendor(
@@ -514,20 +452,20 @@ def process(
 
     conn = get_connection()
 
-conn.execute("""
-    INSERT INTO workflow_runs
-    (company, country, decision, reason, created_at)
-    VALUES (?, ?, ?, ?, ?)
-""", (
-    company,
-    country,
-    decision,
-    reason,
-    datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-))
+    conn.execute("""
+        INSERT INTO workflow_runs
+        (company, country, decision, reason, created_at)
+        VALUES (?, ?, ?, ?, ?)
+    """, (
+        company,
+        country,
+        decision,
+        reason,
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    ))
 
-conn.commit()
-conn.close()
+    conn.commit()
+    conn.close()
 
     stage_html = ""
 
@@ -550,10 +488,7 @@ conn.close()
 
         stage_html += f"""
         <div class="stage {css}">
-            <div>
-                <strong>{icon} {name}</strong>
-            </div>
-
+            <strong>{icon} {name}</strong>
             <span>{label}</span>
         </div>
         """
@@ -565,7 +500,6 @@ conn.close()
         issues_html = "<h3>Issues Requiring Attention</h3>"
 
         for issue in issues:
-
             issues_html += f"""
             <div class="issue">
                 ⚠ {issue}
@@ -582,7 +516,6 @@ conn.close()
 
     return f"""
 <!DOCTYPE html>
-
 <html>
 
 <head>
@@ -594,7 +527,6 @@ conn.close()
 body {{
     font-family: Arial, sans-serif;
     background: #f4f6f9;
-    margin: 0;
     padding: 40px 20px;
     color: #1e293b;
 }}
@@ -615,7 +547,6 @@ body {{
 .result {{
     font-size: 32px;
     font-weight: bold;
-    margin: 15px 0;
 }}
 
 .approved {{
@@ -674,11 +605,9 @@ button {{
     padding: 14px 22px;
     border-radius: 8px;
     cursor: pointer;
-    font-size: 16px;
 }}
 
 </style>
-
 </head>
 
 <body>
@@ -722,9 +651,9 @@ button {{
 </div>
 
 </body>
-
 </html>
 """
+
 
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard():
@@ -736,20 +665,17 @@ def dashboard():
     ).fetchone()[0]
 
     approved = conn.execute("""
-        SELECT COUNT(*)
-        FROM workflow_runs
+        SELECT COUNT(*) FROM workflow_runs
         WHERE decision = 'APPROVED'
     """).fetchone()[0]
 
     pending = conn.execute("""
-        SELECT COUNT(*)
-        FROM workflow_runs
+        SELECT COUNT(*) FROM workflow_runs
         WHERE decision = 'PENDING'
     """).fetchone()[0]
 
     rejected = conn.execute("""
-        SELECT COUNT(*)
-        FROM workflow_runs
+        SELECT COUNT(*) FROM workflow_runs
         WHERE decision = 'REJECTED'
     """).fetchone()[0]
 
@@ -783,7 +709,6 @@ def dashboard():
 
     return f"""
 <!DOCTYPE html>
-
 <html>
 
 <head>
@@ -856,11 +781,6 @@ th, td {{
     font-weight: bold;
 }}
 
-a {{
-    display: inline-block;
-    margin-top: 25px;
-}}
-
 </style>
 
 </head>
@@ -906,10 +826,10 @@ Operational overview and audit trail of vendor onboarding decisions.
 <table>
 
 <tr>
-    <th>Company</th>
-    <th>Country</th>
-    <th>Decision</th>
-    <th>Timestamp</th>
+<th>Company</th>
+<th>Country</th>
+<th>Decision</th>
+<th>Timestamp</th>
 </tr>
 
 {history_rows}
@@ -918,11 +838,12 @@ Operational overview and audit trail of vendor onboarding decisions.
 
 </div>
 
+<p>
 <a href="/">← Back to Workflow</a>
+</p>
 
 </div>
 
 </body>
-
 </html>
 """
